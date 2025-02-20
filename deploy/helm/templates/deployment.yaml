@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "helm.fullname" . }}
+  labels:
+    {{- include "helm.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "helm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+        vault.hashicorp.com/agent-inject: '{{ .Values.vaultInjector.enable }}'
+        vault.hashicorp.com/agent-inject-secret-configjs: {{ .Values.vaultInjector.path }}
+        vault.hashicorp.com/agent-inject-secret-configjs: |      
+          {{`{{- with secret `}}"{{ .Values.vaultInjector.path }}"{{` -}}
+              window["ENVIRONMENT_VARIABLE"]={
+              {{- range $k, $v := .Data.data }}
+              {{- if or (eq $v "true") (eq $v "false") (regexMatch "^[0-9]+$" $v) }}
+                      {{ $k }}:{{ $v }},
+              {{ else }}
+                      {{ $k }}:'{{ $v }}',
+              {{- end }}
+              {{- end }}
+                  };
+          {{- end }}`}}             
+      labels:
+        {{- include "helm.selectorLabels" . | nindent 8 }}
+        helm-revision: "{{ .Release.Revision }}"
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "helm.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.envs }}
+          env:
+          {{- toYaml . | nindent 12 }}
+          {{- end }} 
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+              protocol: TCP
+          {{- toYaml .Values.probs | nindent 10 }}          
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
