@@ -35,11 +35,11 @@ jobs:
     - name: Build
       run: npm run build
 
-    - name: Download artifact
-      uses: actions/download-artifact@v3
-      with:
-        name: production-files
-        path: ./build
+    # - name: Download artifact
+    #   uses: actions/download-artifact@v3
+    #   with:
+    #     name: production-files
+    #     path: ./build
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
       with:
