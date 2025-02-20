@@ -5,7 +5,12 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
-
+    
+permissions:
+  contents: write
+  pull-requests: write 
+  issues: read
+  packages: none
 jobs:
   build:
 
